@@ -1,4 +1,4 @@
-# Quantum State Simulator in Jax
+# QuickQuax: Quantum State Simulator in Jax
 
 To run this code, create a virtual environment with Python 3.12 and install the requirements.txt.
 The only dependencies are `jax`, `flax` and `pytest`.
