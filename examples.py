@@ -37,10 +37,10 @@ def example_1():
     print(f"Energy {energy}")
 
 
-def example_2():
+def example_2(i):
     """Apply parameterized Unitaries to the zero state"""
-    n = 24
-    ngates = 1000
+    n = 12
+    ngates = 100
     seed = 100
     np.random.seed(seed)
     phi = state(n, get_zero_state(n))
@@ -58,13 +58,14 @@ def example_2():
         gate_list.append((i, pauli_names[random_gates[i]]))
         apply_unitary(phi, u, random_parameters[i])
     print(f"Total time for applying {ngates} parameterized gates to {n}-qubit state: {time.time() - start}")
-    print(f"Gate list: {gate_list}")
+    # print(f"Gate list: {gate_list}")
     # Calculate <Psi|U^dag sum_i O_i U |Psi>
     energy = 0
     for i in range(n - 1):
         op = observable((i, i + 1), jnp.kron(paulis['Z'], paulis['Z']))
         energy += expval(phi, op)
     print(f"Energy {energy}")
+    return energy
 
 
 def example_3():
@@ -113,6 +114,7 @@ def example_3():
 
 
 if __name__ == '__main__':
-    example_1()
-    example_2()
-    example_3()
+    # example_1()
+    print(jax.vmap(example_2)(jnp.arange(10)))
+    # print(example_2(0))
+    # example_3()

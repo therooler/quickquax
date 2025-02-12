@@ -55,6 +55,16 @@ class Unitary:
             raise ValueError(f'Did not expect arguments for unitary {self}')
         return self.array
 
+@struct.dataclass()
+class Operator:
+    loc: Tuple[int]
+    array: jax.Array
+
+    def __call__(self, *args):
+        if args:
+            raise ValueError(f'Did not expect arguments for operator {self}')
+        return self.array
+
 
 @struct.dataclass()
 class ExpUnitary(Unitary):
@@ -93,6 +103,15 @@ def unitary(loc: Union[int, Tuple[int]], array: Any):
     assert jnp.allclose(array @ array.conj().T, jnp.eye(2 ** nq)), '`array` must be unitary.'
     array = jnp.array(array, dtype=complex).reshape((2,) * 2 * nq)
     return Unitary(loc, array)
+
+def operator(loc: Union[int, Tuple[int]], array: Any):
+    loc = _check_loc(loc)
+    loc = tuple(loc)
+    nq = len(loc)
+    assert array.size == 4 ** nq, '`array` must be have 4**nq elements'
+    assert jnp.allclose(array, array.conj().T), '`array` must be hermitian.'
+    array = jnp.array(array, dtype=complex).reshape((2,) * 2 * nq)
+    return Operator(loc, array)
 
 
 def exp_unitary(loc, array: Any):
@@ -138,6 +157,10 @@ def apply_unitary(state: State, unitary: Unitary, *args):
     idx_op, idx_state, idx_out = indices_op_state(unitary.loc, state.n)
     state.array = contract(unitary(*args), state.array, idx_op, idx_state, idx_out)
 
+def apply_add(state: State, operator: Operator, n:int):
+    idx_op, idx_state, idx_out = indices_op_state(operator.loc, n)
+    state += contract(operator(), state, idx_op, idx_state, idx_out)
+    return state
 
 @partial(jax.jit, static_argnums=(2, 3, 4))
 def contract(a: jax.Array, b: jax.Array, idx_a: Tuple[int], idx_b: Tuple[int], idx_out: Tuple[int]):
