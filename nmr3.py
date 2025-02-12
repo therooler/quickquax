@@ -5,11 +5,12 @@ from core import (paulis, get_zero_state, _check_loc)
 from functools import partial
 
 from typing import Tuple
-import numpy as np
+from jax.sharding import PartitionSpec as P, NamedSharding, Mesh
 
 ZZ = jnp.kron(paulis['Z'], paulis['Z']).reshape([2] * 4) * jnp.pi / 2
 X = paulis['X']
 Y = paulis['Y']
+ndev = len(jax.devices())
 
 
 def indices_op_state(loc: Tuple[int], n: int):
@@ -76,7 +77,7 @@ def get_time_step(dt, n):
 
 def main(master_key, n, steps=100, dt=1e-3, ntraj: int = 1):
     time_step = get_time_step(dt, n)
-
+    ntraj = ntraj // ndev
     @jax.jit
     def single_trajectory(u, key):
         array = get_zero_state(n)
@@ -96,19 +97,21 @@ def main(master_key, n, steps=100, dt=1e-3, ntraj: int = 1):
         u = jnp.ones((n, 2)) * dt
         start = time.time()
         master_key, trajectory_key = jax.random.split(master_key, 2)
-        print(f"Getting trajectory with key {master_key}")
+        print("Master key", master_key)
+        print(f"Getting trajectory with key {trajectory_key}")
         phis = get_trajectories(u, trajectory_key)
-        print(phis.shape)
+        # jax.debug.visualize_array_sharding(phis)
+        # print(phis.shape)
         print(f"time for {ntraj} trajectories - n={n}: {time.time() - start}")
     # 9.009130954742432 seconds for 1000 trajectories
 
 
 if __name__ == '__main__':
-    print("CUDA?", jax.devices())
     # n = 10, 0.02s per 100 steps.
+    print(f"Devices {jax.devices()}")
     seed = 1000
-    master_key = jax.random.PRNGKey(seed)
-    main(master_key, n=10, ntraj=4000)
+    master_key = jax.random.key(seed)
+    main(master_key, n=4, ntraj=4)
 
     # print(keys)
     # jax.vmap(partial(main, n=12, steps=100, dt=1e-2))(keys)
